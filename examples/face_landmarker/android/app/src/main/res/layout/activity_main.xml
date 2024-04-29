@@ -31,7 +31,6 @@
             android:name="androidx.navigation.fragment.NavHostFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginTop="?android:attr/actionBarSize"
             android:background="@android:color/transparent"
             android:keepScreenOn="true"
             app:defaultNavHost="true"
@@ -43,6 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:layout_alignParentTop="true"
+            android:visibility="gone"
             android:background="@color/toolbar_background">
 
             <ImageView
@@ -58,6 +58,7 @@
             android:layout_below="@+id/toolbar"
             app:itemIconTint="@color/bg_nav_item"
             app:itemTextColor="@color/bg_nav_item"
+            android:visibility="gone"
             app:menu="@menu/menu_bottom_nav" />
 
         <View

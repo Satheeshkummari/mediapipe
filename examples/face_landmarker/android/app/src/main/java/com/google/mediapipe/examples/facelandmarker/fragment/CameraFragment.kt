@@ -336,12 +336,17 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         val cameraSelector =
             CameraSelector.Builder().requireLensFacing(cameraFacing).build()
 
+        // Preview. Set the target resolution to portrait mode (480x640)
+        /*.setTargetAspectRatio(aspectRatio)
+        .setTargetResolution(Size(640, 480))*/
         // Preview. Only using the 4:3 ratio because this is the closest to our models
         preview = Preview.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
             .build()
 
         // ImageAnalysis. Using RGBA 8888 to match how our models work
+        /*.setTargetAspectRatio(aspectRatio)
+        .setTargetResolution(Size(640, 480))*/
         imageAnalyzer =
             ImageAnalysis.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
