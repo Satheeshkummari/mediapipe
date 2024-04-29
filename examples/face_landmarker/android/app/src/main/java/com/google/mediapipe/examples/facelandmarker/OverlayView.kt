@@ -20,6 +20,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.util.DisplayMetrics
+import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -38,6 +40,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
     private var imageHeight: Int = 1
+
+    private var dpWidthPx: Int = 1
+    private var dpHeightPx: Int = 1
+    private var diff: Int = 1
 
     init {
         initPaints()
@@ -73,15 +79,15 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
             for(landmark in faceLandmarkerResult.faceLandmarks()) {
                 for(normalizedLandmark in landmark) {
-                    canvas.drawPoint(normalizedLandmark.x() * imageWidth * scaleFactor, normalizedLandmark.y() * imageHeight * scaleFactor, pointPaint)
+                    canvas.drawPoint((normalizedLandmark.x() * imageWidth * scaleFactor) - diff, normalizedLandmark.y() * imageHeight * scaleFactor, pointPaint)
                 }
             }
 
             FaceLandmarker.FACE_LANDMARKS_CONNECTORS.forEach {
                 canvas.drawLine(
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor,
+                    (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
                     faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor,
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor,
+                    (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor) - diff,
                     faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor,
                     linePaint)
             }
@@ -98,6 +104,20 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
         this.imageHeight = imageHeight
         this.imageWidth = imageWidth
+
+        val displayMetrics: DisplayMetrics = resources.displayMetrics
+        val dpHeight: Float = displayMetrics.heightPixels / displayMetrics.density
+        val dpWidth: Float = displayMetrics.widthPixels / displayMetrics.density
+        val dpWidthPx: Int = displayMetrics.widthPixels
+        val dpHeightPx: Int = displayMetrics.heightPixels
+        this.dpWidthPx = dpWidthPx
+        this.dpHeightPx = dpHeightPx
+
+        val diff = (dpWidthPx - imageWidth) / 2;
+        this.diff = diff;
+//        Log.d(TAG, "setResults:$imageHeight :$imageWidth :$scaleFactor :$width :$height :$dpHeight :$dpWidth :$dpHeightPx :$dpWidthPx")
+        Log.d(TAG, "setResults:$imageHeight :$imageWidth :$dpWidthPx :$dpHeightPx")
+
 
         scaleFactor = when (runningMode) {
             RunningMode.IMAGE,
