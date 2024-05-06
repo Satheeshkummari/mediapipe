@@ -34,6 +34,7 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <RelativeLayout
+            android:id="@+id/parent_rl"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginBottom="@dimen/bottom_sheet_peek_height">
@@ -43,7 +44,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:contentDescription="@null"
-                android:scaleType="fitStart"
+                android:scaleType="fitCenter"
                 android:visibility="gone" />
 
             <VideoView

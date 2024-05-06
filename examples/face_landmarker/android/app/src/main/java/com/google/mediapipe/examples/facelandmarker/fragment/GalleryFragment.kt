@@ -282,7 +282,7 @@ class GalleryFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             .copy(Bitmap.Config.ARGB_8888, true)
             ?.let { bitmap ->
                 fragmentGalleryBinding.imageResult.setImageBitmap(bitmap)
-
+                Log.d(TAG, "runDetectionOnImage: ${bitmap.width} ${fragmentGalleryBinding.imageResult.width}")
                 // Run face landmarker on the input image
                 backgroundExecutor.execute {
 

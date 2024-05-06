@@ -36,6 +36,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var results: FaceLandmarkerResult? = null
     private var linePaint = Paint()
     private var pointPaint = Paint()
+    private var textPaint = Paint()
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
@@ -43,7 +44,8 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
     private var dpWidthPx: Int = 1
     private var dpHeightPx: Int = 1
-    private var diff: Int = 1
+    private var diff: Int = 0
+    private var diffHight: Int = 0
 
     init {
         initPaints()
@@ -66,6 +68,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         pointPaint.color = Color.YELLOW
         pointPaint.strokeWidth = LANDMARK_STROKE_WIDTH
         pointPaint.style = Paint.Style.FILL
+
+        textPaint.color = Color.RED
+        textPaint.setTextSize(40f);
+        textPaint.style = Paint.Style.FILL
     }
 
     override fun draw(canvas: Canvas) {
@@ -76,20 +82,28 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         }
 
         results?.let { faceLandmarkerResult ->
-
             for(landmark in faceLandmarkerResult.faceLandmarks()) {
-                for(normalizedLandmark in landmark) {
-                    canvas.drawPoint((normalizedLandmark.x() * imageWidth * scaleFactor) - diff, normalizedLandmark.y() * imageHeight * scaleFactor, pointPaint)
+                for((number, normalizedLandmark) in landmark.withIndex()) {
+                    canvas.drawPoint((normalizedLandmark.x() * imageWidth * scaleFactor) - diff, (normalizedLandmark.y() * imageHeight * scaleFactor) - diffHight, pointPaint)
+//                    canvas.drawText(""+number, (normalizedLandmark.x() * imageWidth * scaleFactor) - diff, (normalizedLandmark.y() * imageHeight * scaleFactor) - diffHight, textPaint)
                 }
             }
-
+            var number = 0
+            var filter = 0;
+//            FaceLandmarker.FACE_LANDMARKS_FACE_OVAL.forEach {
             FaceLandmarker.FACE_LANDMARKS_CONNECTORS.forEach {
+//                if(filter%2== 0){
+                canvas.drawText(""+number, (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
+                    (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight, textPaint)
                 canvas.drawLine(
                     (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor,
+                    (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight,
                     (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor) - diff,
-                    faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor,
+                    (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor) - diffHight,
                     linePaint)
+//                }
+                filter++
+                number++
             }
         }
     }
@@ -113,12 +127,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         this.dpWidthPx = dpWidthPx
         this.dpHeightPx = dpHeightPx
 
-        val diff = (dpWidthPx - imageWidth) / 2;
-        this.diff = diff;
-//        Log.d(TAG, "setResults:$imageHeight :$imageWidth :$scaleFactor :$width :$height :$dpHeight :$dpWidth :$dpHeightPx :$dpWidthPx")
-        Log.d(TAG, "setResults:$imageHeight :$imageWidth :$dpWidthPx :$dpHeightPx")
-
-
         scaleFactor = when (runningMode) {
             RunningMode.IMAGE,
             RunningMode.VIDEO -> {
@@ -129,13 +137,41 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
                 // landmarks to match with the size that the captured images will be
                 // displayed.
                 max(width * 1f / imageWidth, height * 1f / imageHeight)
+                /* to fit live width and Height */
+//                min(width * 1f / imageWidth, height * 1f / imageHeight)
             }
         }
+        val scaledWidth = scaleFactor * imageWidth
+        diff = when (runningMode) {
+            RunningMode.IMAGE,
+            RunningMode.VIDEO -> {
+                (-(width  - scaledWidth) / 2).toInt()
+            }
+            RunningMode.LIVE_STREAM -> {
+                (width - imageWidth) / 2
+                /* to fit live width and Height */
+                /*0*/
+            }
+        }
+
+        val scaledHeight = scaleFactor * imageHeight
+        diffHight = when (runningMode) {
+            RunningMode.IMAGE,
+            RunningMode.VIDEO -> {
+                (-(height  - scaledHeight) / 2).toInt()
+            }
+            RunningMode.LIVE_STREAM -> {
+                0
+            }
+        }
+//        Log.d(TAG, "setResults:$width :$imageWidth $imageHeight :$diff $scaleFactor")
+        Log.d(TAG, "setResults:$imageHeight :$imageWidth :$scaleFactor :$width :$height :$dpHeight :$dpWidth :$dpHeightPx :$dpWidthPx")
         invalidate()
     }
 
     companion object {
         private const val LANDMARK_STROKE_WIDTH = 8F
+        private const val LANDMARK_STROKE_WIDTH_1 = 50F
         private const val TAG = "Face Landmarker Overlay"
     }
 }

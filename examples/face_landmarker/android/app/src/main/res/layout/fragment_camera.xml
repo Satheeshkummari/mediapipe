@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     ~ Copyright 2023 The TensorFlow Authors. All Rights Reserved.
     ~
     ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,18 @@
     android:id="@+id/camera_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+<!--    to fit live width and Height-->
+    <!--<RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.camera.view.PreviewView
+            android:id="@+id/view_finder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true" />
+    </RelativeLayout>-->
 
     <androidx.camera.view.PreviewView
         android:id="@+id/view_finder"
@@ -44,7 +55,6 @@
         android:background="@color/bottom_sheet_background"
         android:clipToPadding="true"
         android:paddingHorizontal="@dimen/bottom_sheet_padding"
-        android:visibility="invisible"
         app:layout_anchor="@id/bottom_sheet_layout"
         app:layout_anchorGravity="top"
         app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior" />
@@ -53,7 +63,6 @@
         android:layout_width="wrap_content"
         android:layout_height="1dp"
         android:background="@color/mp_color_primary"
-        android:visibility="invisible"
         app:layout_anchor="@id/recyclerview_results"
         app:layout_anchorGravity="bottom" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
