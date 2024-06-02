@@ -19,11 +19,13 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
+import com.google.mediapipe.examples.facelandmarker.FaceLandmarkerHelper.Companion.TAG
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
@@ -37,6 +39,8 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var linePaint = Paint()
     private var pointPaint = Paint()
     private var textPaint = Paint()
+    private var fillPaint = Paint()
+
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
@@ -51,10 +55,17 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         initPaints()
     }
 
+    companion object {
+        private const val LANDMARK_STROKE_WIDTH = 8F
+        private const val LANDMARK_STROKE_WIDTH_1 = 50F
+        private const val TAG = "Face Landmarker Overlay"
+    }
+
     fun clear() {
         results = null
         linePaint.reset()
         pointPaint.reset()
+        fillPaint.reset()
         invalidate()
         initPaints()
     }
@@ -69,41 +80,164 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         pointPaint.strokeWidth = LANDMARK_STROKE_WIDTH
         pointPaint.style = Paint.Style.FILL
 
+        fillPaint.style = Paint.Style.FILL_AND_STROKE
+
         textPaint.color = Color.RED
         textPaint.setTextSize(40f);
         textPaint.style = Paint.Style.FILL
     }
 
+
+    private fun calculateQuadraticControlPoints(
+        endX: Float,
+        endY: Float,
+        startX: Float,
+        startY: Float,
+        smoothing: Float
+    ): Pair<Float, Float> {
+        val controlX = startX + smoothing * (endX - startX)
+        val controlY = startY + smoothing * (endY - startY)
+        return Pair(controlX, controlY)
+    }
+
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
-        if(results == null || results!!.faceLandmarks().isEmpty()) {
+        if (results == null || results!!.faceLandmarks().isEmpty()) {
             clear()
             return
         }
 
         results?.let { faceLandmarkerResult ->
-            for(landmark in faceLandmarkerResult.faceLandmarks()) {
+            //for all facial points
+            /*   for(landmark in faceLandmarkerResult.faceLandmarks()) {
                 for((number, normalizedLandmark) in landmark.withIndex()) {
                     canvas.drawPoint((normalizedLandmark.x() * imageWidth * scaleFactor) - diff, (normalizedLandmark.y() * imageHeight * scaleFactor) - diffHight, pointPaint)
-//                    canvas.drawText(""+number, (normalizedLandmark.x() * imageWidth * scaleFactor) - diff, (normalizedLandmark.y() * imageHeight * scaleFactor) - diffHight, textPaint)
                 }
-            }
-            var number = 0
+            }*/
+
+            //for all facial connectors
+            /*var number = 0
             var filter = 0;
 //            FaceLandmarker.FACE_LANDMARKS_FACE_OVAL.forEach {
             FaceLandmarker.FACE_LANDMARKS_CONNECTORS.forEach {
+//            FaceLandmarker.FACE_LANDMARKS_LIPS.forEach {
 //                if(filter%2== 0){
-                canvas.drawText(""+number, (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
-                    (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight, textPaint)
+//                canvas.drawText(""+number, (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
+//                    (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight, textPaint)
                 canvas.drawLine(
                     (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
                     (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight,
                     (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor) - diff,
                     (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor) - diffHight,
                     linePaint)
-//                }
+////                }
                 filter++
                 number++
+            }*/
+
+            val featuresToDraw = listOf(
+//                FaceLandmarker.FACE_LANDMARKS_FACE_OVAL to Color.RED,
+//                FaceLandmarker.FACE_LANDMARKS_LIPS to Color.BLUE,
+//                FaceLandmarker.FACE_LANDMARKS_LEFT_EYE to Color.YELLOW,
+//                FaceLandmarker.FACE_LANDMARKS_LEFT_EYE_BROW,
+//                FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS,
+//                FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE to Color.YELLOW,
+//                FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE_BROW,
+//                FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS,
+                CustomFaceLandmarks.FACE_LANDMARKS_LOWER_LIPS_CUSTOM to Color.rgb(142, 0, 142),
+                CustomFaceLandmarks.FACE_LANDMARKS_UPPER_LIPS_CUSTOM to Color.rgb(142, 0, 142)
+            )
+            for ((feature, color) in featuresToDraw) {
+                val path = Path()
+                feature.forEachIndexed { index, it ->
+//                    linePaint.color = Color.RED
+//                    canvas.drawLine(
+//                        (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,
+//                        (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight,
+//                        (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor) - diff,
+//                        (faceLandmarkerResult.faceLandmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor) - diffHight,
+//                        linePaint)
+//                    canvas.drawText(""+index, (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff,(faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight, textPaint)
+                }
+
+                val lipPath = Path()
+                feature.forEachIndexed { index, it ->
+                    val startX = (faceLandmarkerResult.faceLandmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor) - diff
+                    val startY = (faceLandmarkerResult.faceLandmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor) - diffHight
+                    if (index == 0) {
+                        lipPath.moveTo(startX, startY)
+                    } else {
+                        lipPath.lineTo(startX, startY)
+                    }
+                }
+                lipPath.close()
+
+                // Apply lipstick color
+                val lipstickPaint = Paint().apply {
+                    this.color = color
+                    this.style = Paint.Style.FILL
+                    this.strokeWidth = 58F
+                }
+                canvas.drawPath(lipPath, lipstickPaint)
+
+
+// Construct the lip path with Bezier curves
+                /*val lipPath = Path()
+                val featurePoints = feature.map {
+                    val point = faceLandmarkerResult.faceLandmarks()[0][it!!.start()]
+                    Pair(
+                        (point.x() * imageWidth * scaleFactor) - diff,
+                        (point.y() * imageHeight * scaleFactor) - diffHight
+                    )
+                }
+
+                if (featurePoints.isNotEmpty()) {
+                    val (startX, startY) = featurePoints[0]
+                    lipPath.moveTo(startX, startY)
+
+                    for (i in 0 until featurePoints.size - 1) {
+                        val (currentX, currentY) = featurePoints[i]
+                        val (nextX, nextY) = featurePoints[i + 1]
+                        val (controlX, controlY) = calculateQuadraticControlPoints(
+                            currentX,
+                            currentY,
+                            nextX,
+                            nextY,
+                            10f
+                        )
+                        lipPath.quadTo(controlX, controlY, nextX, nextY)
+                    }
+
+                    // Closing the path with a Bezier curve back to the start
+                    val (endX, endY) = featurePoints[featurePoints.size - 1]
+                    val (firstControlX, firstControlY) = calculateQuadraticControlPoints(
+                        endX,
+                        endY,
+                        startX,
+                        startY,
+//                        0.8f
+                        10f
+                    )
+                    lipPath.quadTo(firstControlX, firstControlY, startX, startY)
+
+                    lipPath.close()
+
+                    // Apply lipstick color
+                    val lipstickPaint = Paint().apply {
+                        this.color = color
+                        this.style = Paint.Style.FILL
+                        this.isAntiAlias = true
+                    }
+                    canvas.drawPath(lipPath, lipstickPaint)
+                }*/
+//                --------not properly working
+
+
+//            for(landmark in faceLandmarkerResult.faceLandmarks()) {
+//                for((number, normalizedLandmark) in landmark.withIndex()) {
+//                    canvas.drawPoint((normalizedLandmark.x() * imageWidth * scaleFactor) - diff, (normalizedLandmark.y() * imageHeight * scaleFactor) - diffHight, pointPaint)
+//                }
+//            }
             }
         }
     }
@@ -132,6 +266,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
             RunningMode.VIDEO -> {
                 min(width * 1f / imageWidth, height * 1f / imageHeight)
             }
+
             RunningMode.LIVE_STREAM -> {
                 // PreviewView is in FILL_START mode. So we need to scale up the
                 // landmarks to match with the size that the captured images will be
@@ -145,10 +280,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         diff = when (runningMode) {
             RunningMode.IMAGE,
             RunningMode.VIDEO -> {
-                (-(width  - scaledWidth) / 2).toInt()
+                (-(width - scaledWidth) / 2).toInt()
             }
+
             RunningMode.LIVE_STREAM -> {
-                (width - imageWidth) / 2
+                ((scaledWidth - width) / 2).toInt()
                 /* to fit live width and Height */
                 /*0*/
             }
@@ -158,20 +294,18 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         diffHight = when (runningMode) {
             RunningMode.IMAGE,
             RunningMode.VIDEO -> {
-                (-(height  - scaledHeight) / 2).toInt()
+                (-(height - scaledHeight) / 2).toInt()
             }
             RunningMode.LIVE_STREAM -> {
                 0
             }
         }
 //        Log.d(TAG, "setResults:$width :$imageWidth $imageHeight :$diff $scaleFactor")
-        Log.d(TAG, "setResults:$imageHeight :$imageWidth :$scaleFactor :$width :$height :$dpHeight :$dpWidth :$dpHeightPx :$dpWidthPx")
+        Log.d(
+            TAG,
+            "setResults:$imageHeight :$imageWidth :$scaleFactor :$width :$height :$dpHeight :$dpWidth :$dpHeightPx :$dpWidthPx"
+        )
         invalidate()
     }
 
-    companion object {
-        private const val LANDMARK_STROKE_WIDTH = 8F
-        private const val LANDMARK_STROKE_WIDTH_1 = 50F
-        private const val TAG = "Face Landmarker Overlay"
-    }
 }

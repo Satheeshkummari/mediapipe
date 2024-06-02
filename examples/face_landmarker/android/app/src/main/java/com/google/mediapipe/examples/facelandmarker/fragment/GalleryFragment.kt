@@ -17,6 +17,7 @@ package com.google.mediapipe.examples.facelandmarker.fragment
 
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -67,7 +68,7 @@ class GalleryFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Handle the returned Uri
             uri?.let { mediaUri ->
                 when (val mediaType = loadMediaType(mediaUri)) {
-                    MediaType.IMAGE -> runDetectionOnImage(mediaUri)
+                    MediaType.IMAGE -> runDetectionOnImage(mediaUri, isFrontCamera = false)
                     MediaType.VIDEO -> runDetectionOnVideo(mediaUri)
                     MediaType.UNKNOWN -> {
                         updateDisplayView(mediaType)
@@ -94,6 +95,17 @@ class GalleryFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        var imagePath = arguments?.getString("imageUri")
+        val isFrontCamera = arguments?.getBoolean("isFrontCamera", false) ?: false // Assuming you pass this argument
+//        imagePath = "file:///storage/emulated/0/Android/data/com.google.mediapipe.examples.facelandmarker/files/Pictures/2024-05-19-10-41-45-888.jpg"
+//         imagePath = "file:///storage/emulated/0/Android/data/com.google.mediapipe.examples.facelandmarker/files/Pictures/1714543247516.JPEG"
+//        imagePath = "content://com.android.externalstorage.documents/document/primary%3ADownload%2F1714543247516%20(1).JPEG"
+        if (imagePath != null) {
+            val imageUri = Uri.parse(imagePath)
+            runDetectionOnImage(imageUri, isFrontCamera)
+        }
+
         fragmentGalleryBinding.fabGetContent.setOnClickListener {
             getContent.launch(arrayOf("image/*", "video/*"))
         }
@@ -262,8 +274,14 @@ class GalleryFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         fragmentGalleryBinding.tvPlaceholder.visibility = View.VISIBLE
     }
 
+    // Helper function to flip a Bitmap horizontally
+    private fun flipBitmapHorizontally(bitmap: Bitmap): Bitmap {
+        val matrix = Matrix().apply { preScale(-1f, 1f) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
     // Load and display the image.
-    private fun runDetectionOnImage(uri: Uri) {
+    private fun runDetectionOnImage(uri: Uri, isFrontCamera: Boolean) {
         setUiEnabled(false)
         backgroundExecutor = Executors.newSingleThreadScheduledExecutor()
         updateDisplayView(MediaType.IMAGE)
@@ -281,6 +299,12 @@ class GalleryFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         }
             .copy(Bitmap.Config.ARGB_8888, true)
             ?.let { bitmap ->
+                val bitmap = if (isFrontCamera) {
+                    flipBitmapHorizontally(bitmap)
+                } else {
+                    bitmap
+                }
+
                 fragmentGalleryBinding.imageResult.setImageBitmap(bitmap)
                 Log.d(TAG, "runDetectionOnImage: ${bitmap.width} ${fragmentGalleryBinding.imageResult.width}")
                 // Run face landmarker on the input image
@@ -303,6 +327,8 @@ class GalleryFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                                 faceBlendshapesResultAdapter.updateResults(result.result)
                                 faceBlendshapesResultAdapter.notifyDataSetChanged()
                             }
+                            Log.d(TAG, "runDetectionOnImage: $result")
+                            Log.d(TAG, "runDetectionOnImage: ${result.result}")
                             fragmentGalleryBinding.overlay.setResults(
                                 result.result,
                                 bitmap.height,

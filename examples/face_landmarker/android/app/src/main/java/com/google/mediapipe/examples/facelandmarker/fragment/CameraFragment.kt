@@ -17,7 +17,9 @@ package com.google.mediapipe.examples.facelandmarker.fragment
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -30,11 +32,14 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Camera
 import androidx.camera.core.AspectRatio
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_DRAGGING
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE
@@ -45,6 +50,8 @@ import com.google.mediapipe.examples.facelandmarker.MainViewModel
 import com.google.mediapipe.examples.facelandmarker.R
 import com.google.mediapipe.examples.facelandmarker.databinding.FragmentCameraBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
+import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Optional
 import java.util.concurrent.ExecutorService
@@ -57,6 +64,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     companion object {
         private const val TAG = "Face Landmarker"
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     }
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
@@ -71,6 +79,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     }
 
     private var preview: Preview? = null
+    private var imageCapture: ImageCapture? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
@@ -168,6 +177,55 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
         // Attach listeners to UI control widgets
         initBottomSheetControls()
+
+        fragmentCameraBinding.captureButton.setOnClickListener {
+            capturePhoto()
+        }
+    }
+
+    private val outputDirectory: File by lazy {
+        requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: File("")
+    }
+
+    private fun capturePhoto() {
+        val imageCapture = imageCapture ?: return
+
+        // Create time-stamped output file to hold the image
+        val photoFile = File(
+            outputDirectory,
+            SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()) + ".jpg"
+        )
+
+        // Create output options object which contains file + metadata
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        // Set up image capture listener, which is triggered after photo has
+        // been taken
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(requireContext()),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onError(exc: ImageCaptureException) {
+                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                }
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val savedUri = Uri.fromFile(photoFile)
+                    val msg = "Photo capture succeeded: $savedUri"
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, msg)
+
+                    val bundle = Bundle().apply {
+                        putString("imageUri", savedUri.toString())
+                        putBoolean("isFrontCamera", cameraFacing == CameraSelector.LENS_FACING_FRONT)
+                    }
+
+                    // Navigate to GalleryFragment with the URI
+                    val navController = findNavController()
+                    navController.navigate(R.id.action_camera_fragment_to_gallery_fragment, bundle)
+                }
+            }
+        )
     }
 
     private fun initBottomSheetControls() {
@@ -278,7 +336,6 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     }
 
     // Update the values displayed in the bottom sheet. Reset Facelandmarker
-    // helper.
     private fun updateControlsUi() {
         fragmentCameraBinding.bottomSheetLayout.maxFacesValue.text =
             faceLandmarkerHelper.maxNumFaces.toString()
@@ -344,6 +401,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
             .build()
 
+        imageCapture = ImageCapture.Builder()
+            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+            .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
+            .build()
+
         // ImageAnalysis. Using RGBA 8888 to match how our models work
         /*.setTargetAspectRatio(aspectRatio)
         .setTargetResolution(Size(640, 480))*/
@@ -367,7 +429,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // A variable number of use-cases can be passed here -
             // camera provides access to CameraControl & CameraInfo
             camera = cameraProvider.bindToLifecycle(
-                this, cameraSelector, preview, imageAnalyzer
+                this, cameraSelector, preview, imageCapture, imageAnalyzer
             )
 
             // Attach the viewfinder's surface provider to preview use case
